@@ -1,5 +1,7 @@
 from requests import get
 from bs4 import BeautifulSoup
+import os
+import pandas as pd
 
 headers = {'User-Agent': 'Codeup Data Science - Jemison'}
 topics = ["business","sports","technology","entertainment"]
@@ -14,49 +16,62 @@ def get_blog_articles(urls,headers):
     '''
     Given a list of URLs of Codeup blog articles, returns a list of dictionaries containing the url, blog title and blog content.
     '''
-    blog_list = []
-    for url in urls:
-        #get page info
-        response = get(url,headers=headers)
-        #turn into soup object
-        soup = BeautifulSoup(response.content,'html.parser')
-        
-        blog_dict = {
-            'url': url,
-            'title': soup.title.text,
-            'content': soup.select('.entry-content')[0]
-        }
-        blog_list.append(blog_dict)
-    return blog_list
+    filename = 'codeup_blogs_raw.csv'
+
+    if os.path.isfile(filename):
+        return pd.read_csv(filename)
+    else:
+        blog_list = []
+        for url in urls:
+            #get page info
+            response = get(url,headers=headers)
+            #turn into soup object
+            soup = BeautifulSoup(response.content,'html.parser')
+            
+            blog_dict = {
+                'url': url,
+                'title': soup.title.text,
+                'content': soup.select('.entry-content')[0].text
+            }
+            blog_list.append(blog_dict)
+            df = pd.DataFrame(blog_list)
+        df.to_csv(filename, index=False)
+        return df
 
 def get_news_articles(topics,headers):
     '''
     Given a list of news topics, retrieve the title and content for all articles in that inshorts topic.
     '''
-    base_url = 'https://inshorts.com/en/read/'
-    article_list = []
-    for t in topics:
-        #create section url
-        topic_url = base_url + t
-        #get the content
-        response = get(topic_url,headers=headers)
-        #convert to soup
-        soup = BeautifulSoup(response.content,'html.parser')
-        #get the headline for each article in this topic - list of headlines
-        headlines = soup.find_all(itemprop="headline")
-        #get the content for each article - list of article bodies
-        bodies = soup.find_all(itemprop="articleBody")
-        
-        #loop over the 'cards' 
-        #but really just looping over the list of headlines and article bodies
-        for title, content in zip(headlines, bodies):
-            #add all to dictionary
-            art_dict = {
-                'title': title.text,
-                'content': content.text,
-                'category': t
-            }
-            #append this article to the list
-            article_list.append(art_dict)
-        
-    return article_list
+    filename = 'inshorts_raw.csv'
+
+    if os.path.isfile(filename):
+        return pd.read_csv(filename)
+    else:
+        base_url = 'https://inshorts.com/en/read/'
+        article_list = []
+        for t in topics:
+            #create section url
+            topic_url = base_url + t
+            #get the content
+            response = get(topic_url,headers=headers)
+            #convert to soup
+            soup = BeautifulSoup(response.content,'html.parser')
+            #get the headline for each article in this topic - list of headlines
+            headlines = soup.find_all(itemprop="headline")
+            #get the content for each article - list of article bodies
+            bodies = soup.find_all(itemprop="articleBody")
+            
+            #loop over the 'cards' 
+            #but really just looping over the list of headlines and article bodies
+            for title, content in zip(headlines, bodies):
+                #add all to dictionary
+                art_dict = {
+                    'title': title.text,
+                    'content': content.text,
+                    'category': t
+                }
+                #append this article to the list
+                article_list.append(art_dict)
+            df = pd.DataFrame(article_list)
+        df.to_csv(filename, index=False)
+        return df
